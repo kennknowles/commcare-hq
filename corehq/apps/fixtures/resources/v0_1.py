@@ -1,6 +1,9 @@
+from django.core.urlresolvers import reverse
 from tastypie import fields as tp_f
-from corehq.apps.api.resources import JsonResource
-from corehq.apps.api.resources.v0_1 import CustomResourceMeta
+from tastypie.bundle import Bundle
+
+from corehq.apps.api.resources import JsonResource, DomainSpecificResourceMixin
+from corehq.apps.api.resources.v0_1 import CustomResourceMeta, DomainAdminAuthorization
 from corehq.apps.api.util import get_object_or_not_exist
 from corehq.apps.fixtures.models import FixtureDataItem, FixtureDataType
 
@@ -42,7 +45,37 @@ class FixtureResource(JsonResource):
 
         return [convert_fdt(fdi) for fdi in fdis] or []
 
+    def obj_create(self, bundle, request=None, **kwargs):
+        # full_dehydrate will handle copying over the fields, but we still must implement *something* here
+
+        bundle.obj.domain = kwargs['domain']
+        for key, value in bundle.data.items():
+            setattr(bundle.obj, key, value)
+
+        bundle = self.full_hydrate(bundle)
+        bundle.obj.save()
+        
+        return bundle
+
+    def get_resource_uri(self, bundle_or_obj=None, url_name='api_dispatch_list'):
+        if isinstance(bundle_or_obj, Bundle):
+            obj = bundle_or_obj.obj
+        elif bundle_or_obj is None:
+            return None
+        else:
+            obj = bundle_or_obj
+
+        return reverse('api_dispatch_detail', kwargs=dict(resource_name=self._meta.resource_name,
+                                                          domain=obj.domain,
+                                                          api_name=self._meta.api_name,
+                                                          pk=obj.get_id))
+                                   
+
+
     class Meta(CustomResourceMeta):
         object_class = FixtureDataItem    
+        authorization = DomainAdminAuthorization()
         resource_name = 'fixture'
         limit = 0
+        list_allowed_methods = ['get', 'post']
+        detail_allowed_methods = ['get']
