@@ -15,10 +15,14 @@ class FixtureResource(JsonResource):
     fixture_type = tp_f.CharField(attribute='fixture_type', readonly=True)
     id = tp_f.CharField(attribute='_id', readonly=True, unique=True)
 
-    def obj_get(self, request, **kwargs):
+    users = tp_f.ListField(attribute='get_user_ids')
+    groups = tp_f.ListField(attribute='get_group_ids')
+
+    def obj_get(self, bundle, **kwargs):
         return convert_fdt(get_object_or_not_exist(FixtureDataItem, kwargs['pk'], kwargs['domain']))
 
-    def obj_get_list(self, request, **kwargs):
+    def obj_get_list(self, bundle, **kwargs):
+        request = bundle.request    
         domain = kwargs['domain']
         parent_id = request.GET.get("parent_id", None)
         parent_ref_name = request.GET.get("parent_ref_name", None)
@@ -39,5 +43,6 @@ class FixtureResource(JsonResource):
         return [convert_fdt(fdi) for fdi in fdis] or []
 
     class Meta(CustomResourceMeta):
+        object_class = FixtureDataItem    
         resource_name = 'fixture'
         limit = 0
