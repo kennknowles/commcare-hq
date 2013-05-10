@@ -146,3 +146,28 @@ class FixtureResourceTests(TestCase):
         self.assertEqual(len(fixtures[0]['users']), 1)
         self.assertEqual(len(fixtures[0]['groups']), 0)
 
+    def test_create(self):
+        fixture_data = {
+            'fields': {
+                'field1': 'value1',
+                'field2': 'value2',
+            },
+            'fixture_type': self.data_type.name,
+            'users': [self.user.get_id],
+        }
+        
+        self.client.login(username=self.username, password=self.password)
+        endpoint_url = reverse('api_dispatch_list', kwargs=dict(domain=self.domain.name, 
+                                                                api_name='v0.1', 
+                                                                resource_name=v0_1.FixtureResource.Meta.resource_name))
+        response = self.client.post(endpoint_url, simplejson.dumps(fixture_data), content_type='application/json')
+        self.assertEqual(response.status_code, 201)
+
+        backend_fixtures = FixtureDataItem.by_domain(self.domain.name)
+
+        self.assertEqual(len(backend_fixtures), 2)
+        self.assertTrue(any([fixture.get_id == self.data_item.get_id for fixture in backend_fixtures]))
+        self.assertTrue(any([fixture.get_id != self.data_item.get_id for fixture in backend_fixtures]))
+
+        [fixture.delete() for fixture in backend_fixtures if fixture.get_id != self.data_item.get_id]
+
