@@ -14,6 +14,7 @@ from corehq.apps.api.es import XFormES, CaseES, ESQuerySet, es_search
 # can be set to provide a mock.
 
 MOCK_XFORM_ES = None
+MOCK_CASE_ES = None
 
 class XFormInstanceResource(v0_3.XFormInstanceResource, DomainSpecificResourceMixin):
 
@@ -43,11 +44,14 @@ class XFormInstanceResource(v0_3.XFormInstanceResource, DomainSpecificResourceMi
         list_allowed_methods = ['get']
 
 class CommCareCaseResource(v0_3.CommCareCaseResource, DomainSpecificResourceMixin):
+    def case_es(self, domain):
+        return MOCK_CASE_ES or CaseES(domain)
+     
     def obj_get_list(self, bundle, domain, **kwargs):
         filters = v0_3.CaseListFilters(bundle.request.GET).filters
         return ESQuerySet(payload = ElasticCaseQuery(domain, filters).get_query(),
                           model = lambda jvalue: dict_object(CommCareCase.wrap(jvalue).get_json()),
-                          es_client = CaseES(domain)) # Not that XFormES is used only as an ES client, for `run_query` against the proper index
+                          es_client = self.case_es(domain)) # Not that XFormES is used only as an ES client, for `run_query` against the proper index
 
 class GroupResource(JsonResource, DomainSpecificResourceMixin):
     id = fields.CharField(attribute='get_id', unique=True, readonly=True)

@@ -1,3 +1,4 @@
+from django.core.urlresolvers import NoReverseMatch
 from tastypie.resources import Resource
 
 class dict_object(object):
