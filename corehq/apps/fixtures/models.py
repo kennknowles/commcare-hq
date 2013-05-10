@@ -35,6 +35,9 @@ class FixtureDataItem(Document):
     data_type_id = StringProperty()
     fields = DictProperty()
 
+    def __repr__(self):
+        return 'FixtureDataItem(domain=%r, data_type_id=%r, fields=%r)' % (self.domain, self.data_type_id, self.fields)
+
     @property
     def data_type(self):
         if not hasattr(self, '_data_type'):
@@ -85,39 +88,51 @@ class FixtureDataItem(Document):
             xField.text = unicode(self.fields[field]) if self.fields.has_key(field) else ""
         return xData
 
-    def get_groups(self, wrap=True):
-        group_ids = set(
+    def get_group_ids(self):
+        return set(
             get_db().view('fixtures/ownership',
                 key=[self.domain, 'group by data_item', self.get_id],
                 reduce=False,
                 wrapper=lambda r: r['value']
             )
         )
+
+    def get_groups(self, wrap=True):
+        group_ids = self.get_group_ids()
+
         if wrap:
             return set(Group.view('_all_docs', keys=list(group_ids), include_docs=True))
         else:
             return group_ids
 
-    def get_users(self, wrap=True, include_groups=False):
-        user_ids = set(
+    def get_users_in_groups(self):
+        return set(user 
+                   for group in self.get_groups()
+                   for user in group.get_users(only_commcare=True))
+
+    def get_user_ids(self):
+        return set(
             get_db().view('fixtures/ownership',
                 key=[self.domain, 'user by data_item', self.get_id],
                 reduce=False,
                 wrapper=lambda r: r['value']
             )
         )
-        if include_groups:
-            group_ids = self.get_groups(wrap=False)
-        else:
-            group_ids = set()
-        users_in_groups = [group.get_users(only_commcare=True) for group in Group.view('_all_docs',
-            keys=list(group_ids),
-            include_docs=True
-        )]
+
+    def get_users(self, wrap=True, include_groups=False):
+        user_ids = self.get_user_ids()
+        users = set(CommCareUser.view('_all_docs', keys=list(user_ids), include_docs=True))
+
         if wrap:
-            return set(CommCareUser.view('_all_docs', keys=list(user_ids), include_docs=True)).union(*users_in_groups)
+            if include_groups:
+                return users | self.get_users_in_groups()
+            else:
+                return users
         else:
-            return user_ids | set([user.get_id for user in users_in_groups])
+            if include_groups:
+                return user_ids | set(user.get_id for user in self.get_users_in_groups())
+            else:
+                return user_ids
 
     def get_all_users(self, wrap=True):
         return self.get_users(wrap=wrap, include_groups=True)
