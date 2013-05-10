@@ -1,4 +1,5 @@
 import simplejson
+import time
 from xml.etree import ElementTree
 
 from django.test import TestCase
@@ -171,3 +172,34 @@ class FixtureResourceTests(TestCase):
 
         [fixture.delete() for fixture in backend_fixtures if fixture.get_id != self.data_item.get_id]
 
+    def failing_test_update(self):
+        prior_fields = self.data_item.fields
+        
+        fixture_data = {
+            'domain': self.data_item.domain,
+            'data_type_id': self.data_item.data_type_id,
+            'fields': {
+                'bizzle': 'bazzle'
+            },
+            'users': list(self.data_item.get_user_ids()),
+            'groups': list(self.data_item.get_group_ids()),
+        }
+
+        endpoint_url = reverse('api_dispatch_detail', kwargs=dict(domain=self.domain.name, 
+                                                                  pk=self.data_item.get_id,
+                                                                  api_name='v0.1', 
+                                                                  resource_name=v0_1.FixtureResource.Meta.resource_name))
+
+        self.client.login(username=self.username, password=self.password)
+        response = self.client.put(endpoint_url, simplejson.dumps(fixture_data), content_type='application/json')
+        self.assertEqual(response.status_code, 204) # `put` returns nothing unless always_returns_data is set
+
+        ### NOTICE: Failing with HttpConflict 405 ###
+
+        backend_fixture = FixtureDataItem.get(self.data_item.get_id)
+
+        self.assertEqual(backend_fixture.domain, self.data_item.domain) 
+        self.assertEqual(backend_fixture.fields['bizzle'], 'bazzle') 
+
+        backend_fixture.fields = prior_fields
+        backend_fixture.save()

@@ -57,6 +57,17 @@ class FixtureResource(JsonResource):
         
         return bundle
 
+    def obj_update(self, bundle, **kwargs):
+        bundle.obj.domain = kwargs['domain']
+        bundle.obj._id = kwargs['pk'] # This comes from the URL
+        for key, value in bundle.data.items():
+            setattr(bundle.obj, key, value)
+
+        bundle = self.full_hydrate(bundle)
+        bundle.obj.save()
+
+        return bundle
+
     def get_resource_uri(self, bundle_or_obj=None, url_name='api_dispatch_list'):
         if isinstance(bundle_or_obj, Bundle):
             obj = bundle_or_obj.obj
