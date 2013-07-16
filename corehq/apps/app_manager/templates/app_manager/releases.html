@@ -181,7 +181,7 @@
                     </td>
                     <td class="nowrap">
                         <div class="btn-group">
-                            <a class="btn btn-primary" data-bind="openModal: 'deploy-build-modal-template'">Deploy</a>
+                            <a class="btn btn-primary" data-bind="openModal: 'deploy-build-modal-template', click: function() { _gaq.push(['_trackEvent', 'App Manager', 'Deploy', 'fake-app-id']); }">Deploy</a>
                         </div>
                     </td>
                     {% if edit %}
