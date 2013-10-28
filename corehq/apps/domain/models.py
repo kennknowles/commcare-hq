@@ -20,7 +20,6 @@ from langcodes import langs as all_langs
 from collections import defaultdict
 from django.utils.importlib import import_module
 
-
 lang_lookup = defaultdict(str)
 
 DATA_DICT = settings.INTERNAL_DATA
@@ -390,10 +389,12 @@ class Domain(Document, HQBillingDomainMixin, SnapshotMixin):
         couch_user.save()
 
     def applications(self):
-        from corehq.apps.app_manager.models import ApplicationBase
+        from corehq.apps.app_manager.models import ApplicationBase, RemoteApp
         return ApplicationBase.view('app_manager/applications_brief',
                                     startkey=[self.name],
-                                    endkey=[self.name, {}]).all()
+                                    endkey=[self.name, {}],
+                                    classes={ 'RemoteApp': RemoteApp },
+                                    ).all()
 
     def full_applications(self, include_builds=True):
         from corehq.apps.app_manager.models import Application, RemoteApp
